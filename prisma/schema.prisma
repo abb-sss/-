@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            Int        @id @default(autoincrement())
+  email         String     @unique
+  passwordHash  String
+  username      String
+  avatarUrl     String?
+  role          String     @default("USER")
+  createdAt     DateTime   @default(now())
+  resources     Resource[]
+  comments      Comment[]
+  likes         Like[]
+  favorites     Favorite[]
+}
+
+model Category {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+  resources   Resource[]
+}
+
+model Resource {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String
+  url         String
+  coverUrl    String?
+  authorId    Int
+  categoryId  Int?
+  tags        String     // Stored as JSON string in SQLite
+  viewCount   Int        @default(0)
+  likeCount   Int        @default(0)
+  status      String     @default("APPROVED")
+  createdAt   DateTime   @default(now())
+
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category    Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  comments    Comment[]
+  likes       Like[]
+  favorites   Favorite[]
+}
+
+model Comment {
+  id          Int        @id @default(autoincrement())
+  content     String
+  userId      Int
+  resourceId  Int
+  parentId    Int?
+  createdAt   DateTime   @default(now())
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource    Resource   @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  parent      Comment?   @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[]  @relation("CommentReplies")
+}
+
+model Like {
+  userId      Int
+  resourceId  Int
+  createdAt   DateTime   @default(now())
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource    Resource   @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, resourceId])
+}
+
+model Favorite {
+  userId      Int
+  resourceId  Int
+  createdAt   DateTime   @default(now())
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource    Resource   @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, resourceId])
+}
