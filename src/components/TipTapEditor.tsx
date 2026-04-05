@@ -208,11 +208,14 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       // Extract headings for TOC
       const headings: { id: string, text: string, level: number }[] = [];
       const transaction = editor.state.tr;
+      let hasChanges = false;
+      
       editor.state.doc.descendants((node, pos) => {
         if (node.type.name === 'heading') {
           const id = `heading-${pos}`;
           if (node.attrs.id !== id) {
             transaction.setNodeMarkup(pos, undefined, { ...node.attrs, id });
+            hasChanges = true;
           }
           headings.push({
             id,
@@ -221,16 +224,25 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           });
         }
       });
-      if (transaction.steps.length > 0) {
+      
+      // Dispatch only if there are actual markup changes to prevent loops
+      if (hasChanges && transaction.steps.length > 0) {
         editor.view.dispatch(transaction);
       }
       
       // Update TOC in store
       import('@/store/useEditorStore').then(({ useEditorStore }) => {
-        // Wrap the state update in a setTimeout to avoid updating state during render
-        setTimeout(() => {
-          useEditorStore.getState().setHeadings(headings);
-        }, 0);
+        // Compare with current headings to avoid unnecessary state updates
+        const currentHeadings = useEditorStore.getState().headings;
+        const isDifferent = currentHeadings.length !== headings.length || 
+          headings.some((h, i) => h.id !== currentHeadings[i]?.id || h.text !== currentHeadings[i]?.text);
+          
+        if (isDifferent) {
+          // Wrap the state update in a setTimeout to avoid updating state during render
+          setTimeout(() => {
+            useEditorStore.getState().setHeadings(headings);
+          }, 0);
+        }
       });
     },
     editorProps: {
