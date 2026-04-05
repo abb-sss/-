@@ -227,7 +227,12 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       
       // Dispatch only if there are actual markup changes to prevent loops
       if (hasChanges && transaction.steps.length > 0) {
-        editor.view.dispatch(transaction);
+        // Use requestAnimationFrame to prevent dispatching within the current update cycle
+        requestAnimationFrame(() => {
+          if (!editor.isDestroyed) {
+            editor.view.dispatch(transaction);
+          }
+        });
       }
       
       // Update TOC in store
@@ -238,10 +243,10 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           headings.some((h, i) => h.id !== currentHeadings[i]?.id || h.text !== currentHeadings[i]?.text);
           
         if (isDifferent) {
-          // Wrap the state update in a setTimeout to avoid updating state during render
+          // Use setTimeout to ensure state update happens entirely outside React's render phase
           setTimeout(() => {
             useEditorStore.getState().setHeadings(headings);
-          }, 0);
+          }, 10);
         }
       });
     },
