@@ -15,35 +15,40 @@
   pointer-events: none;
 }
 
-.ProseMirror p {
-  margin-bottom: 1.5rem;
+/* 格式化基础样式 */
+.format-apa {
+  font-family: "Times New Roman", Times, serif;
+  line-height: 2;
 }
+.format-apa p { text-indent: 0.5in; margin-bottom: 0; }
+.format-apa h1 { text-align: center; font-weight: bold; margin-bottom: 1rem; }
+.format-apa h2 { font-weight: bold; margin-bottom: 0.5rem; }
 
-.ProseMirror h1 {
-  font-size: 2.25rem;
-  line-height: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  font-family: serif;
+.format-ieee {
+  font-family: "Times New Roman", Times, serif;
+  line-height: 1.5;
 }
+.format-ieee p { margin-bottom: 0.5rem; text-align: justify; }
+.format-ieee h1 { text-align: center; font-size: 24pt; margin-bottom: 1.5rem; }
+.format-ieee h2 { text-transform: uppercase; text-align: center; font-size: 10pt; }
 
-.ProseMirror h2 {
-  font-size: 1.5rem;
-  line-height: 2rem;
-  font-weight: 600;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  font-family: serif;
+.format-mla {
+  font-family: "Times New Roman", Times, serif;
+  line-height: 2;
 }
+.format-mla p { text-indent: 0.5in; margin-bottom: 0; }
+.format-mla h1 { text-align: left; font-weight: normal; margin-bottom: 1rem; }
+.format-mla h2 { font-weight: normal; }
 
-.ProseMirror h3 {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  font-weight: 600;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-  font-family: serif;
+/* 默认编辑样式 (当未应用特定期刊格式时) */
+.format-default {
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  line-height: 1.8;
 }
+.format-default p { margin-bottom: 1.5rem; }
+.format-default h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 2rem; }
+.format-default h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+.format-default h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; }
 
 .ProseMirror blockquote {
   border-left: 3px solid #e5e7eb;
@@ -59,10 +64,15 @@
   cursor: pointer;
   font-weight: 500;
   text-decoration: none;
+  background-color: #eff6ff;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
 }
 
 .citation-mark:hover {
   text-decoration: underline;
+  background-color: #dbeafe;
 }
 
 :root {
