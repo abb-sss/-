@@ -76,14 +76,18 @@ export default function Editor() {
         year: '2017',
         source: 'Advances in neural information processing systems'
       };
-      useEditorStore.getState().addCitation(newCitation);
+      
+      // Update citation outside of React render phase
+      setTimeout(() => {
+        useEditorStore.getState().addCitation(newCitation);
+        
+        // 根据当前已有引用数量计算新引用的编号
+        const currentCitations = useEditorStore.getState().citations;
+        const citeIndex = currentCitations.findIndex(c => c.refId === newCitation.refId) + 1;
 
-      // 根据当前已有引用数量计算新引用的编号
-      const currentCitations = useEditorStore.getState().citations;
-      const citeIndex = currentCitations.findIndex(c => c.refId === newCitation.refId) + 1;
-
-      setContent(content + `<p>Recent advancements in deep learning, particularly the Transformer architecture, have significantly improved the performance of various sequence modeling tasks <span class="citation-mark" data-ref-id="ref-1" title="Attention Is All You Need">[${citeIndex}]</span>. These models allow for highly parallelizable processing and have been widely adopted across domains.</p>`);
-      setIsGenerating(false);
+        setContent(content + `<p>Recent advancements in deep learning, particularly the Transformer architecture, have significantly improved the performance of various sequence modeling tasks <span class="citation-mark" data-ref-id="ref-1" title="Attention Is All You Need">[${citeIndex}]</span>. These models allow for highly parallelizable processing and have been widely adopted across domains.</p>`);
+        setIsGenerating(false);
+      }, 0);
     }, 1500);
   };
 
@@ -270,10 +274,12 @@ export default function Editor() {
                         ) : (
                           <button 
                             onClick={() => {
-                              useEditorStore.getState().addCitation(result);
-                              const currentCitations = useEditorStore.getState().citations;
-                              const citeIndex = currentCitations.findIndex(c => c.refId === result.refId) + 1;
-                              setContent(content + ` <span class="citation-mark" data-ref-id="${result.refId}" title="${result.title}">[${citeIndex}]</span>`);
+                              setTimeout(() => {
+                          useEditorStore.getState().addCitation(result);
+                          const currentCitations = useEditorStore.getState().citations;
+                          const citeIndex = currentCitations.findIndex(c => c.refId === result.refId) + 1;
+                          setContent(content + ` <span class="citation-mark" data-ref-id="${result.refId}" title="${result.title}">[${citeIndex}]</span>`);
+                        }, 0);
                             }}
                             className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition"
                           >
