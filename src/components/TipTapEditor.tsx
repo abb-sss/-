@@ -227,8 +227,8 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       
       // Dispatch only if there are actual markup changes to prevent loops
       if (hasChanges && transaction.steps.length > 0) {
-        // Use requestAnimationFrame to prevent dispatching within the current update cycle
-        requestAnimationFrame(() => {
+        // Delay dispatching to avoid updating state while rendering
+        Promise.resolve().then(() => {
           if (!editor.isDestroyed) {
             editor.view.dispatch(transaction);
           }
@@ -259,7 +259,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
 
   useEffect(() => {
     if (editor && editor.getHTML() !== content && !editor.isFocused) {
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, false);
     }
   }, [content, editor]);
 
