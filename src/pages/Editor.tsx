@@ -87,6 +87,22 @@ export default function Editor() {
     }, 1500);
   };
 
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [polishResult, setPolishResult] = useState("");
+
+  const handlePolish = (type: 'grammar' | 'academic') => {
+    setIsPolishing(true);
+    setPolishResult("");
+    setTimeout(() => {
+      setIsPolishing(false);
+      if (type === 'grammar') {
+        setPolishResult("已检查选中文本。未发现明显语法错误。建议将 'This method are good' 修改为 'This method is good' 以保持主谓一致。");
+      } else {
+        setPolishResult("【学术化润色结果】\n\n传统的特征提取方法在处理高度异质性的医学影像数据时，往往存在泛化能力不足的局限性。相比之下，以卷积神经网络（CNN）为代表的深度表征学习模型，能够自适应地从原始像素中提取具有高阶语义信息的层级特征，从而在图像分割与分类任务中展现出显著的性能优势。");
+      }
+    }, 1500);
+  };
+
   return (
     <div className="flex h-full w-full bg-[#fcfcfc]">
       {/* 编辑器主体 */}
@@ -129,35 +145,63 @@ export default function Editor() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-12 py-16 scroll-smooth relative">
-          <TipTapEditor
-            content={content}
-            onChange={setContent}
-            title={title}
-            onTitleChange={setTitle}
-            formatStyle={formatStyle}
-          />
-          
-          {/* 动态参考文献列表 */}
-          {useEditorStore.getState().citations.length > 0 && (
-            <div className="max-w-3xl mx-auto mt-8 bg-white shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16">
-              <h2 className="text-2xl font-bold font-serif mb-6 border-b border-gray-200 pb-2">参考文献 (References)</h2>
-              <ol className={`list-decimal pl-5 space-y-3 ${formatStyle === 'APA' ? 'format-apa' : formatStyle === 'IEEE' ? 'format-ieee' : formatStyle === 'MLA' ? 'format-mla' : 'format-default text-sm text-gray-700'}`}>
-                {useEditorStore.getState().citations.map((cite, index) => (
-                  <li key={cite.id} id={`ref-${cite.refId}`} className="pl-2">
-                    {formatStyle === 'APA' ? (
-                      <span>{cite.authors} ({cite.year}). {cite.title}. <i>{cite.source}</i>.</span>
-                    ) : formatStyle === 'IEEE' ? (
-                      <span>{cite.authors}, "{cite.title}," in <i>{cite.source}</i>, {cite.year}.</span>
-                    ) : formatStyle === 'MLA' ? (
-                      <span>{cite.authors}. "{cite.title}." <i>{cite.source}</i>, {cite.year}.</span>
-                    ) : (
-                      <span><b>{cite.authors}</b>. {cite.title}. <i>{cite.source}</i>, {cite.year}.</span>
-                    )}
-                  </li>
-                ))}
-              </ol>
+          <div className="flex justify-center max-w-[1200px] mx-auto gap-8">
+            {/* 左侧大纲导航 */}
+            {useEditorStore.getState().headings.length > 0 && (
+              <div className="hidden lg:block w-56 shrink-0 sticky top-16 self-start max-h-[calc(100vh-8rem)] overflow-y-auto pr-4">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 px-2">文档大纲</div>
+                <div className="space-y-1 border-l-2 border-gray-100">
+                  {useEditorStore.getState().headings.map((heading, index) => (
+                    <a
+                      key={index}
+                      href={`#${heading.id}`}
+                      className={`block py-1 px-3 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-r transition-colors truncate
+                        ${heading.level === 1 ? 'font-medium' : heading.level === 2 ? 'pl-6' : 'pl-9 text-xs'}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    >
+                      {heading.text}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 编辑器内容区 */}
+            <div className="flex-1 min-w-0 max-w-3xl">
+              <TipTapEditor
+                content={content}
+                onChange={setContent}
+                title={title}
+                onTitleChange={setTitle}
+                formatStyle={formatStyle}
+              />
+              
+              {/* 动态参考文献列表 */}
+              {useEditorStore.getState().citations.length > 0 && (
+                <div className="mt-8 bg-white shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16">
+                  <h2 className="text-2xl font-bold font-serif mb-6 border-b border-gray-200 pb-2">参考文献 (References)</h2>
+                  <ol className={`list-decimal pl-5 space-y-3 ${formatStyle === 'APA' ? 'format-apa' : formatStyle === 'IEEE' ? 'format-ieee' : formatStyle === 'MLA' ? 'format-mla' : 'format-default text-sm text-gray-700'}`}>
+                    {useEditorStore.getState().citations.map((cite, index) => (
+                      <li key={cite.id} id={`ref-${cite.refId}`} className="pl-2">
+                        {formatStyle === 'APA' ? (
+                          <span>{cite.authors} ({cite.year}). {cite.title}. <i>{cite.source}</i>.</span>
+                        ) : formatStyle === 'IEEE' ? (
+                          <span>{cite.authors}, "{cite.title}," in <i>{cite.source}</i>, {cite.year}.</span>
+                        ) : formatStyle === 'MLA' ? (
+                          <span>{cite.authors}. "{cite.title}." <i>{cite.source}</i>, {cite.year}.</span>
+                        ) : (
+                          <span><b>{cite.authors}</b>. {cite.title}. <i>{cite.source}</i>, {cite.year}.</span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </main>
       </div>
 
@@ -243,9 +287,46 @@ export default function Editor() {
           )}
 
           {activeTab === 'ai' && (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-4">
-              <Wand2 className="w-8 h-8 text-blue-400" />
-              <p className="text-sm text-center">选中左侧文本，<br/>使用AI进行智能润色、改写或翻译</p>
+            <div className="flex flex-col h-full">
+              <div className="flex flex-col gap-3 mb-6">
+                <button 
+                  onClick={() => handlePolish('academic')}
+                  disabled={isPolishing}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
+                >
+                  {isPolishing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Wand2 className="w-4 h-4" />}
+                  {isPolishing ? '正在分析...' : '学术化语气润色'}
+                </button>
+                <button 
+                  onClick={() => handlePolish('grammar')}
+                  disabled={isPolishing}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition shadow-sm disabled:opacity-50"
+                >
+                  {isPolishing ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> : <Settings2 className="w-4 h-4" />}
+                  {isPolishing ? '正在检查...' : '语法与拼写检查'}
+                </button>
+              </div>
+
+              {polishResult ? (
+                <div className="flex-1 bg-white border border-blue-100 rounded-lg p-4 shadow-sm relative group overflow-y-auto">
+                  <div className="text-xs font-semibold text-blue-600 mb-3 flex items-center gap-1.5">
+                    <Wand2 className="w-3.5 h-3.5" /> AI 分析结果
+                  </div>
+                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
+                    {polishResult}
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end">
+                    <button className="text-xs font-medium bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-gray-800 transition">
+                      替换选中文本
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6 text-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                  <Wand2 className="w-8 h-8 mb-4 text-gray-300" />
+                  <p className="text-sm">在左侧编辑器中选中需要优化的段落，点击上方按钮进行智能分析。</p>
+                </div>
+              )}
             </div>
           )}
         </div>

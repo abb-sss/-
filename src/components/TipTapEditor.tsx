@@ -1,8 +1,44 @@
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import Code from '@tiptap/extension-code';
+import { common, createLowlight } from 'lowlight';
 import { useEffect } from 'react';
-import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Quote } from 'lucide-react';
+import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Quote, Code as CodeIcon, TerminalSquare } from 'lucide-react';
+import { Extension } from '@tiptap/core';
+import Suggestion from '@tiptap/suggestion';
+import tippy from 'tippy.js';
+import SlashCommandList from './editor/SlashCommandList';
+import { getSuggestionItems, renderItems } from './editor/slashExtension';
+import { getCitationItems, renderCitationItems } from './editor/citationExtension';
+
+const lowlight = createLowlight(common);
+
+// Slash Command Plugin
+const SlashCommand = Extension.create({
+  name: 'slashCommand',
+
+  addOptions() {
+    return {
+      suggestion: {
+        char: '/',
+        command: ({ editor, range, props }: any) => {
+          props.command({ editor, range });
+        },
+      },
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      Suggestion({
+        editor: this.editor,
+        ...this.options.suggestion,
+      }),
+    ];
+  },
+});
 
 interface TipTapEditorProps {
   content: string;
@@ -77,6 +113,24 @@ const MenuBar = ({ editor }: { editor: any }) => {
       >
         <Quote className="w-4 h-4" />
       </button>
+      
+      <div className="w-px h-6 bg-gray-300 mx-2 self-center"></div>
+
+      <button
+        onClick={() => editor.chain().focus().toggleCode().run()}
+        disabled={!editor.can().chain().focus().toggleCode().run()}
+        className={`p-2 rounded hover:bg-gray-200 transition ${editor.isActive('code') ? 'bg-gray-200 text-gray-900' : 'text-gray-600'}`}
+        title="行内代码"
+      >
+        <CodeIcon className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        className={`p-2 rounded hover:bg-gray-200 transition ${editor.isActive('codeBlock') ? 'bg-gray-200 text-gray-900' : 'text-gray-600'}`}
+        title="代码块"
+      >
+        <TerminalSquare className="w-4 h-4" />
+      </button>
     </div>
   );
 };
@@ -87,15 +141,94 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       StarterKit.configure({
         heading: {
           levels: [1, 2, 3],
+          HTMLAttributes: {
+            class: 'scroll-mt-20',
+          },
+        },
+        code: false,
+        codeBlock: false,
+      }),
+      Code.configure({
+        HTMLAttributes: {
+          class: 'bg-gray-100 text-red-500 px-1.5 py-0.5 rounded-md font-mono text-[0.9em] mx-0.5',
+        },
+      }),
+      CodeBlockLowlight.configure({
+        lowlight,
+        HTMLAttributes: {
+          class: 'bg-[#282c34] text-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto my-4',
         },
       }),
       Placeholder.configure({
-        placeholder: '在这里开始你的创作，或使用右侧文献助手进行智能扩写...',
+        placeholder: '输入 "/" 唤起块菜单，或使用右侧助手...',
+      }),
+      SlashCommand.configure({
+        suggestion: {
+          items: getSuggestionItems,
+          render: renderItems,
+        },
+      }),
+      Extension.create({
+        name: 'citationCommand',
+        addOptions() {
+          return {
+            suggestion: {
+              char: '@',
+              command: ({ editor, range, props }: any) => {
+                // @ts-ignore
+                import('@/store/useEditorStore').then(({ useEditorStore }) => {
+                  useEditorStore.getState().addCitation(props);
+                  const currentCitations = useEditorStore.getState().citations;
+                  const citeIndex = currentCitations.findIndex(c => c.refId === props.refId) + 1;
+                  editor.chain().focus().deleteRange(range).insertContent(` <span class="citation-mark" data-ref-id="${props.refId}" title="${props.title}">[${citeIndex}]</span> `).run();
+                });
+              },
+            },
+          };
+        },
+        addProseMirrorPlugins() {
+          return [
+            Suggestion({
+              editor: this.editor,
+              ...this.options.suggestion,
+            }),
+          ];
+        },
+      }).configure({
+        suggestion: {
+          items: getCitationItems,
+          render: renderCitationItems,
+        },
       }),
     ],
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+      
+      // Extract headings for TOC
+      const headings: { id: string, text: string, level: number }[] = [];
+      const transaction = editor.state.tr;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'heading') {
+          const id = `heading-${pos}`;
+          if (node.attrs.id !== id) {
+            transaction.setNodeMarkup(pos, undefined, { ...node.attrs, id });
+          }
+          headings.push({
+            id,
+            text: node.textContent,
+            level: node.attrs.level,
+          });
+        }
+      });
+      if (transaction.steps.length > 0) {
+        editor.view.dispatch(transaction);
+      }
+      
+      // Update TOC in store
+      import('@/store/useEditorStore').then(({ useEditorStore }) => {
+        useEditorStore.getState().setHeadings(headings);
+      });
     },
     editorProps: {
       attributes: {
