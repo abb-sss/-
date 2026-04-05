@@ -227,7 +227,10 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       
       // Update TOC in store
       import('@/store/useEditorStore').then(({ useEditorStore }) => {
-        useEditorStore.getState().setHeadings(headings);
+        // Wrap the state update in a setTimeout to avoid updating state during render
+        setTimeout(() => {
+          useEditorStore.getState().setHeadings(headings);
+        }, 0);
       });
     },
     editorProps: {
