@@ -159,7 +159,9 @@ export default function Editor() {
                         ${heading.level === 1 ? 'font-medium' : heading.level === 2 ? 'pl-6' : 'pl-9 text-xs'}`}
                       onClick={(e) => {
                         e.preventDefault();
-                        document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth' });
+                        const elements = Array.from(document.querySelectorAll(`h${heading.level}`));
+                        const target = elements.find(el => el.textContent?.includes(heading.text));
+                        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
                     >
                       {heading.text}

@@ -205,37 +205,22 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
       
-      // Extract headings for TOC
+      // Extract headings for TOC (read-only)
       const headings: { id: string, text: string, level: number }[] = [];
-      const transaction = editor.state.tr;
-      let hasChanges = false;
       
       editor.state.doc.descendants((node, pos) => {
         if (node.type.name === 'heading') {
-          const id = `heading-${pos}`;
-          if (node.attrs.id !== id) {
-            transaction.setNodeMarkup(pos, undefined, { ...node.attrs, id });
-            hasChanges = true;
-          }
+          // Instead of mutating the node with an ID, we just read the text and level.
+          // The ID will be generated dynamically based on position for the React UI.
           headings.push({
-            id,
+            id: `heading-${pos}`,
             text: node.textContent,
             level: node.attrs.level,
           });
         }
       });
       
-      // Dispatch only if there are actual markup changes to prevent loops
-      if (hasChanges && transaction.steps.length > 0) {
-        // Delay dispatching to avoid updating state while rendering
-        Promise.resolve().then(() => {
-          if (!editor.isDestroyed) {
-            editor.view.dispatch(transaction);
-          }
-        });
-      }
-      
-      // Update TOC in store
+      // Update TOC in store without any ProseMirror transaction dispatch
       import('@/store/useEditorStore').then(({ useEditorStore }) => {
         // Compare with current headings to avoid unnecessary state updates
         const currentHeadings = useEditorStore.getState().headings;
@@ -246,7 +231,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           // Use setTimeout to ensure state update happens entirely outside React's render phase
           setTimeout(() => {
             useEditorStore.getState().setHeadings(headings);
-          }, 10);
+          }, 0);
         }
       });
     },
