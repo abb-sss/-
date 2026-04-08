@@ -492,9 +492,9 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           const $pos = state.selection.$to;
           if ($pos.parentOffset === $pos.parent.content.size) {
             const suggestedText = "Furthermore, recent studies suggest a paradigm shift in this domain.";
-            // Wrapping setGhostText inside setTimeout to prevent synchronous rendering conflict
+            // We use setTimeout to ensure this internal state mutation escapes the current call stack
             setTimeout(() => {
-               if (!editor.isDestroyed) {
+               if (editor && !editor.isDestroyed) {
                  editor.commands.setGhostText(suggestedText);
                }
             }, 0);

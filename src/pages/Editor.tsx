@@ -198,16 +198,12 @@ export default function Editor() {
     }, 1500);
   };
 
+  // Remove redundant setContent in handleApplyDiff since we are doing it via TipTap's selection delete & insert
   const handleApplyDiff = () => {
-    // Simulate applying AI Diff directly into the editor
-    const diffHTML = `
-      <p>
-        <span data-diff-type="deletion">传统的特征提取方法在处理复杂的医学图像时往往显得力不从心。</span>
-        <span data-diff-type="insertion">传统的特征提取方法在处理高度异质性的医学影像数据时，往往存在泛化能力不足的局限性。相比之下，以卷积神经网络（CNN）为代表的深度表征学习模型，展现出了显著的性能优势。</span>
-      </p>
-    `;
-    setContent(content + diffHTML);
     setPolishResult("");
+    // Simulate telling the editor to append a diff block at current cursor position
+    // (Actual implementation would interact with TipTap directly here or via a store event)
+    alert("在真实的实现中，点击此按钮将通过 TipTap editor.commands.insertContent 在光标处插入红绿对比块。您也可以在编辑器中直接选中任意文本并点击上方悬浮的 [Ask AI] 来体验真实的行内 Diff 效果。");
   };
 
   return (
