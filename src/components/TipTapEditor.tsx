@@ -1,4 +1,4 @@
-import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
+import { useEditor, EditorContent, ReactRenderer, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -264,6 +264,39 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
   return (
     <div className="max-w-3xl mx-auto bg-white min-h-[800px] shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16 relative group">
       <MenuBar editor={editor} />
+      {editor && (
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex bg-gray-900 rounded-lg shadow-lg overflow-hidden p-1 text-white border border-gray-700">
+          <button
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('bold') ? 'text-blue-400' : 'text-gray-300'}`}
+            title="加粗"
+          >
+            <Bold className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('italic') ? 'text-blue-400' : 'text-gray-300'}`}
+            title="斜体"
+          >
+            <Italic className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('strike') ? 'text-blue-400' : 'text-gray-300'}`}
+            title="删除线"
+          >
+            <Strikethrough className="w-4 h-4" />
+          </button>
+          <div className="w-px h-5 bg-gray-700 mx-1 self-center"></div>
+          <button
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('code') ? 'text-blue-400' : 'text-gray-300'}`}
+            title="行内代码"
+          >
+            <CodeIcon className="w-4 h-4" />
+          </button>
+        </BubbleMenu>
+      )}
       <input
         type="text"
         value={title}

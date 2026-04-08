@@ -1,7 +1,10 @@
 import { Plus, FileText, MoreVertical, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useNavigate } from "react-router-dom";
+
 export default function Dashboard() {
+  const navigate = useNavigate();
   const projects = [
     { id: "1", title: "深度学习在医学图像处理中的应用研究", lastModified: "2小时前", format: "IEEE" },
     { id: "2", title: "大语言模型对现代教育的影响分析", lastModified: "昨天 14:30", format: "APA" },
@@ -40,6 +43,7 @@ export default function Dashboard() {
         {projects.map((project) => (
           <div
             key={project.id}
+            onClick={() => navigate(`/editor/${project.id}`)}
             className="h-48 border border-gray-200 bg-white rounded-xl p-5 flex flex-col justify-between hover:shadow-md hover:border-gray-300 transition cursor-pointer relative group"
           >
             <div className="absolute top-4 right-4 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-900 transition p-1">
@@ -50,11 +54,11 @@ export default function Dashboard() {
               <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded flex items-center justify-center mb-4">
                 <FileText className="w-4 h-4" />
               </div>
-              <Link to={`/editor/${project.id}`} className="block">
+              <div className="block">
                 <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2 hover:text-blue-600 transition-colors">
                   {project.title}
                 </h3>
-              </Link>
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-xs text-gray-500 mt-4 border-t pt-4">

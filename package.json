@@ -15,6 +15,8 @@
     "@tiptap/extension-code": "^2.11.5",
     "@tiptap/extension-code-block-lowlight": "^2.11.5",
     "@tiptap/extension-mention": "^2.11.5",
+    "@tiptap/extension-bubble-menu": "^2.11.5",
+    "@tiptap/extension-floating-menu": "^2.11.5",
     "@tiptap/extension-placeholder": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",

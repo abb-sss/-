@@ -1,8 +1,8 @@
-import { ArrowLeft, Search, Bookmark, Download, Settings2, ChevronDown, Wand2 } from "lucide-react";
+import { ArrowLeft, Search, Bookmark, Download, Settings2, ChevronDown, Wand2, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import TipTapEditor from "@/components/TipTapEditor";
 import { useEditorStore } from "@/store/useEditorStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Editor() {
   const { id } = useParams();
@@ -11,6 +11,51 @@ export default function Editor() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // 监听滚动实现大纲高亮
+  useEffect(() => {
+    const handleScroll = () => {
+      const headings = useEditorStore.getState().headings;
+      if (headings.length === 0) return;
+
+      const viewportHeight = window.innerHeight;
+      let currentActiveId = null;
+
+      for (let i = headings.length - 1; i >= 0; i--) {
+        const heading = headings[i];
+        // 查找对应的 DOM 节点
+        const elements = Array.from(document.querySelectorAll(`h${heading.level}`));
+        const target = elements.find(el => el.textContent?.includes(heading.text));
+
+        if (target) {
+          const rect = target.getBoundingClientRect();
+          // 如果标题在视口上半部分或者已经滚过，则认为是当前活动的大纲
+          if (rect.top <= viewportHeight / 3) {
+            currentActiveId = heading.id;
+            break;
+          }
+        }
+      }
+
+      if (currentActiveId) {
+        setActiveHeadingId(currentActiveId);
+      }
+    };
+
+    // 获取编辑器容器的滚动事件
+    const mainContainer = document.getElementById('editor-main-container');
+    if (mainContainer) {
+      mainContainer.addEventListener('scroll', handleScroll);
+    }
+    return () => {
+      if (mainContainer) {
+        mainContainer.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, []);
+
   const [searchResults, setSearchResults] = useState([
     {
       id: '1',
@@ -123,6 +168,13 @@ export default function Editor() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition mr-1"
+              title={isSidebarOpen ? "收起侧边栏" : "展开侧边栏"}
+            >
+              {isSidebarOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
+            </button>
             <div className="relative">
               <select
                 value={formatStyle}
@@ -148,7 +200,7 @@ export default function Editor() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-12 py-16 scroll-smooth relative">
+        <main id="editor-main-container" className="flex-1 overflow-y-auto px-12 py-16 scroll-smooth relative">
           <div className="flex justify-center max-w-[1200px] mx-auto gap-8">
             {/* 左侧大纲导航 */}
             {useEditorStore.getState().headings.length > 0 && (
@@ -159,8 +211,9 @@ export default function Editor() {
                     <a
                       key={index}
                       href={`#${heading.id}`}
-                      className={`block py-1 px-3 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-r transition-colors truncate
-                        ${heading.level === 1 ? 'font-medium' : heading.level === 2 ? 'pl-6' : 'pl-9 text-xs'}`}
+                      className={`block py-1 px-3 text-sm rounded-r transition-colors truncate
+                        ${heading.level === 1 ? 'font-medium' : heading.level === 2 ? 'pl-6' : 'pl-9 text-xs'}
+                        ${activeHeadingId === heading.id ? 'text-blue-600 bg-blue-50/50 border-l-2 -ml-[2px] border-blue-600' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'}`}
                       onClick={(e) => {
                         e.preventDefault();
                         const elements = Array.from(document.querySelectorAll(`h${heading.level}`));
@@ -212,8 +265,8 @@ export default function Editor() {
       </div>
 
       {/* 右侧文献与AI助手 */}
-      <aside className="w-80 bg-gray-50 flex flex-col h-full shrink-0 shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)] z-10 relative">
-        <div className="flex border-b border-gray-200">
+      <aside className={`bg-gray-50 flex flex-col h-full shrink-0 shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)] z-20 absolute md:relative right-0 top-0 bottom-0 transition-all duration-300 ease-in-out overflow-hidden ${isSidebarOpen ? 'w-80 opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-full md:translate-x-0'}`}>
+        <div className="flex border-b border-gray-200 min-w-[320px]">
           <button 
             onClick={() => setActiveTab("search")}
             className={`flex-1 py-3.5 text-sm font-medium flex justify-center items-center gap-2 transition-colors ${activeTab === 'search' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-900'}`}
