@@ -4,6 +4,7 @@ import CitationSuggestionList from './CitationSuggestionList';
 
 export const getCitationItems = ({ query }: { query: string }) => {
   // 这里模拟从全局或者本地库中检索文献
+
   const mockLibrary = [
     {
       id: '1',

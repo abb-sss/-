@@ -1,4 +1,4 @@
-import { ArrowLeft, Search, Bookmark, Download, Settings2, ChevronDown, Wand2, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ArrowLeft, Search, Bookmark, Download, Settings2, ChevronDown, Wand2, PanelRightClose, PanelRightOpen, ShieldCheck, TableProperties } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import TipTapEditor from "@/components/TipTapEditor";
 import { useEditorStore } from "@/store/useEditorStore";
@@ -7,12 +7,33 @@ import { useState, useEffect } from "react";
 export default function Editor() {
   const { id } = useParams();
   const { title, content, formatStyle, setTitle, setContent } = useEditorStore();
-  const [activeTab, setActiveTab] = useState<"search" | "ai">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "ai" | "matrix">("search");
+  const [isGeneratingMatrix, setIsGeneratingMatrix] = useState(false);
+  const [matrixGenerated, setMatrixGenerated] = useState(false);
+
+  const handleGenerateMatrix = () => {
+    setIsGeneratingMatrix(true);
+    setTimeout(() => {
+      setIsGeneratingMatrix(false);
+      setMatrixGenerated(true);
+    }, 2000);
+  };
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isCheckingPlagiarism, setIsCheckingPlagiarism] = useState(false);
+  const [plagiarismReport, setPlagiarismReport] = useState<{ similarity: number, aiGenerated: number } | null>(null);
+
+  const handlePlagiarismCheck = () => {
+    setIsCheckingPlagiarism(true);
+    setPlagiarismReport(null);
+    setTimeout(() => {
+      setIsCheckingPlagiarism(false);
+      setPlagiarismReport({ similarity: 12, aiGenerated: 8 });
+    }, 2500);
+  };
 
   // 监听滚动实现大纲高亮
   useEffect(() => {
@@ -129,8 +150,9 @@ export default function Editor() {
         // 根据当前已有引用数量计算新引用的编号
         const currentCitations = useEditorStore.getState().citations;
         const citeIndex = currentCitations.findIndex(c => c.refId === newCitation.refId) + 1;
+        const tooltipHTML = `<div class="citation-tooltip"><div class="font-semibold mb-1">${newCitation.title}</div><div class="text-gray-400 text-xs mb-2">${newCitation.authors} (${newCitation.year})</div><div class="text-gray-300 text-xs line-clamp-3">查看原文内容与详情...</div></div>`;
 
-        setContent(content + `<p>Recent advancements in deep learning, particularly the Transformer architecture, have significantly improved the performance of various sequence modeling tasks <span class="citation-mark" data-ref-id="ref-1" title="Attention Is All You Need">[${citeIndex}]</span>. These models allow for highly parallelizable processing and have been widely adopted across domains.</p>`);
+        setContent(content + `<p>Recent advancements in deep learning, particularly the Transformer architecture, have significantly improved the performance of various sequence modeling tasks <span class="citation-mark" data-ref-id="ref-1">[${citeIndex}]${tooltipHTML}</span>. These models allow for highly parallelizable processing and have been widely adopted across domains.</p>`);
         setIsGenerating(false);
       }, 0);
     }, 1500);
@@ -174,6 +196,18 @@ export default function Editor() {
     }, 1500);
   };
 
+  const handleApplyDiff = () => {
+    // Simulate applying AI Diff directly into the editor
+    const diffHTML = `
+      <p>
+        <span data-diff-type="deletion">传统的特征提取方法在处理复杂的医学图像时往往显得力不从心。</span>
+        <span data-diff-type="insertion">传统的特征提取方法在处理高度异质性的医学影像数据时，往往存在泛化能力不足的局限性。相比之下，以卷积神经网络（CNN）为代表的深度表征学习模型，展现出了显著的性能优势。</span>
+      </p>
+    `;
+    setContent(content + diffHTML);
+    setPolishResult("");
+  };
+
   return (
     <div className="flex h-full w-full bg-[#fcfcfc]">
       {/* 编辑器主体 */}
@@ -189,7 +223,32 @@ export default function Editor() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 mr-2">
+              <button
+                onClick={handlePlagiarismCheck}
+                disabled={isCheckingPlagiarism}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition disabled:opacity-50"
+              >
+                {isCheckingPlagiarism ? (
+                  <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                )}
+                {isCheckingPlagiarism ? '检测中...' : '查重与检测'}
+              </button>
+              
+              {plagiarismReport && (
+                <div className="flex items-center gap-2 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded text-xs font-medium text-gray-600">
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-400"></div> 重复率 {plagiarismReport.similarity}%</span>
+                  <div className="w-px h-3 bg-gray-300"></div>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-400"></div> AI率 {plagiarismReport.aiGenerated}%</span>
+                </div>
+              )}
+            </div>
+
+            <div className="w-px h-5 bg-gray-200"></div>
+
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition mr-1"
@@ -291,15 +350,21 @@ export default function Editor() {
         <div className="flex border-b border-gray-200 min-w-[320px]">
           <button 
             onClick={() => setActiveTab("search")}
-            className={`flex-1 py-3.5 text-sm font-medium flex justify-center items-center gap-2 transition-colors ${activeTab === 'search' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-900'}`}
+            className={`flex-1 py-3.5 text-[13px] font-medium flex justify-center items-center gap-1.5 transition-colors ${activeTab === 'search' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-900'}`}
           >
-            <Search className="w-4 h-4" /> 文献检索
+            <Search className="w-3.5 h-3.5" /> 检索
           </button>
           <button 
             onClick={() => setActiveTab("ai")}
-            className={`flex-1 py-3.5 text-sm font-medium flex justify-center items-center gap-2 transition-colors ${activeTab === 'ai' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-900'}`}
+            className={`flex-1 py-3.5 text-[13px] font-medium flex justify-center items-center gap-1.5 transition-colors ${activeTab === 'ai' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-900'}`}
           >
-            <Settings2 className="w-4 h-4" /> AI 润色
+            <Settings2 className="w-3.5 h-3.5" /> 润色
+          </button>
+          <button 
+            onClick={() => setActiveTab("matrix")}
+            className={`flex-1 py-3.5 text-[13px] font-medium flex justify-center items-center gap-1.5 transition-colors ${activeTab === 'matrix' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-900'}`}
+          >
+            <TableProperties className="w-3.5 h-3.5" /> 矩阵
           </button>
         </div>
 
@@ -353,7 +418,8 @@ export default function Editor() {
                           useEditorStore.getState().addCitation(result);
                           const currentCitations = useEditorStore.getState().citations;
                           const citeIndex = currentCitations.findIndex(c => c.refId === result.refId) + 1;
-                          setContent(content + ` <span class="citation-mark" data-ref-id="${result.refId}" title="${result.title}">[${citeIndex}]</span>`);
+                          const tooltipHTML = `<div class="citation-tooltip"><div class="font-semibold mb-1">${result.title}</div><div class="text-gray-400 text-xs mb-2">${result.authors} (${result.year})</div><div class="text-gray-300 text-xs line-clamp-3">${result.abstract}</div></div>`;
+                          setContent(content + ` <span class="citation-mark" data-ref-id="${result.refId}">[${citeIndex}]${tooltipHTML}</span>`);
                         }, 0);
                             }}
                             className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition"
@@ -395,6 +461,19 @@ export default function Editor() {
                     </div>
                   </div>
                 )}
+                {polishResult && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] bg-gray-100 text-gray-800 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed">
+                      <Wand2 className="w-3.5 h-3.5 inline-block mr-1.5 mb-0.5 text-blue-600" />
+                      <span className="whitespace-pre-wrap">{polishResult}</span>
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end">
+                        <button onClick={handleApplyDiff} className="text-xs font-medium bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-gray-800 transition shadow-sm">
+                          行内替换查看对比 (Diff)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100">
                 <input
@@ -406,6 +485,76 @@ export default function Editor() {
                   className="w-full bg-gray-50 border border-gray-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                 />
               </div>
+            </div>
+          )}
+          
+          {activeTab === 'matrix' && (
+            <div className="flex flex-col h-full bg-white p-4">
+              <div className="text-sm font-medium text-gray-800 mb-2">文献对比矩阵生成</div>
+              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                选择文献库中的多篇文献，AI 将自动提取其研究目的、方法、结果与局限性，生成结构化的对比表格，帮助您快速撰写文献综述。
+              </p>
+              
+              {!matrixGenerated ? (
+                <div className="flex-1 flex flex-col justify-center">
+                  <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50">
+                    <div className="text-xs font-medium text-gray-700 mb-2">已选择文献 (3)</div>
+                    <ul className="text-xs text-gray-500 space-y-1.5 list-disc pl-4">
+                      <li>Attention Is All You Need (2017)</li>
+                      <li>Deep learning (2015)</li>
+                      <li>BERT: Pre-training of Deep... (2018)</li>
+                    </ul>
+                  </div>
+                  <button 
+                    onClick={handleGenerateMatrix}
+                    disabled={isGeneratingMatrix}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition shadow-sm disabled:opacity-70"
+                  >
+                    {isGeneratingMatrix ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <TableProperties className="w-4 h-4" />}
+                    {isGeneratingMatrix ? '正在深度阅读与抽取...' : '一键生成矩阵对比'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col">
+                  <div className="flex-1 border border-blue-200 rounded-lg bg-blue-50/30 p-3 overflow-x-auto text-[11px] leading-relaxed">
+                    <table className="w-full text-left min-w-[500px]">
+                      <thead>
+                        <tr className="border-b border-blue-200 text-blue-800">
+                          <th className="pb-2 font-medium w-1/4">文献</th>
+                          <th className="pb-2 font-medium w-1/4">核心方法</th>
+                          <th className="pb-2 font-medium w-1/4">关键结论</th>
+                          <th className="pb-2 font-medium w-1/4">局限性</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-blue-100 text-gray-700">
+                        <tr>
+                          <td className="py-2 pr-2 font-medium text-gray-900">Vaswani et al. (2017)</td>
+                          <td className="py-2 pr-2">纯注意力机制 (Transformer)</td>
+                          <td className="py-2 pr-2">在翻译任务上达到SOTA，高度可并行化</td>
+                          <td className="py-2 pr-2">对长序列内存消耗大</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-2 font-medium text-gray-900">LeCun et al. (2015)</td>
+                          <td className="py-2 pr-2">深度卷积与反向传播</td>
+                          <td className="py-2 pr-2">奠定了现代深度学习的理论与实践基础</td>
+                          <td className="py-2 pr-2">缺乏对序列数据的建模能力</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-2 font-medium text-gray-900">Devlin et al. (2018)</td>
+                          <td className="py-2 pr-2">双向 Transformer 预训练</td>
+                          <td className="py-2 pr-2">刷新了11项NLP任务记录</td>
+                          <td className="py-2 pr-2">预训练成本高昂</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-4">
+                    <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition shadow-sm">
+                      <Wand2 className="w-4 h-4" /> 基于矩阵生成文献综述
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

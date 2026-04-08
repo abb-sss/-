@@ -14,6 +14,39 @@ import 'katex/dist/katex.min.css';
 import SlashCommandList from './editor/SlashCommandList';
 import { getSuggestionItems, renderItems } from './editor/slashExtension';
 import { getCitationItems, renderCitationItems } from './editor/citationExtension';
+import { Mark, mergeAttributes } from '@tiptap/core';
+
+// Custom extension for AI Diff highlighting
+const AiDiffMark = Mark.create({
+  name: 'aiDiff',
+
+  addAttributes() {
+    return {
+      type: {
+        default: 'insertion', // 'insertion' or 'deletion'
+        parseHTML: element => element.getAttribute('data-diff-type'),
+        renderHTML: attributes => {
+          return {
+            'data-diff-type': attributes.type,
+            class: attributes.type === 'insertion' ? 'ai-diff-insertion' : 'ai-diff-deletion',
+          }
+        },
+      },
+    }
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-diff-type]',
+      },
+    ]
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0]
+  },
+});
 
 const lowlight = createLowlight(common);
 
@@ -201,6 +234,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       Placeholder.configure({
         placeholder: '输入 "/" 唤起块菜单，或使用右侧助手...',
       }),
+      AiDiffMark,
       MathExtension,
       SlashCommand.configure({
         suggestion: {
@@ -220,7 +254,8 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
                   useEditorStore.getState().addCitation(props);
                   const currentCitations = useEditorStore.getState().citations;
                   const citeIndex = currentCitations.findIndex(c => c.refId === props.refId) + 1;
-                  editor.chain().focus().deleteRange(range).insertContent(` <span class="citation-mark" data-ref-id="${props.refId}" title="${props.title}">[${citeIndex}]</span> `).run();
+                  const tooltipHTML = `<div class="citation-tooltip"><div class="font-semibold mb-1">${props.title}</div><div class="text-gray-400 text-xs mb-2">${props.authors} (${props.year})</div><div class="text-gray-300 text-xs line-clamp-3">查看原文内容与详情...</div></div>`;
+                  editor.chain().focus().deleteRange(range).insertContent(` <span class="citation-mark" data-ref-id="${props.refId}">[${citeIndex}]${tooltipHTML}</span> `).run();
                 });
               },
             },
