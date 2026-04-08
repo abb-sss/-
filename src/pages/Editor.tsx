@@ -503,6 +503,14 @@ export default function Editor() {
                 )}
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100">
+                <div className="flex gap-2 mb-3">
+                  <button onClick={() => handlePolish('grammar')} className="flex-1 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded hover:bg-gray-200 transition">
+                    语法检查
+                  </button>
+                  <button onClick={() => handlePolish('academic')} className="flex-1 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded hover:bg-blue-100 transition">
+                    学术化润色
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={aiChatInput}
