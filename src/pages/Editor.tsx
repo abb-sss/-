@@ -245,19 +245,7 @@ export default function Editor() {
                   <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-400"></div> 重复率 {plagiarismReport.similarity}%</span>
                   <div className="w-px h-3 bg-gray-300"></div>
                   <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-400"></div> AI率 {plagiarismReport.aiGenerated}%</span>
-                  {/* 底部字数统计状态栏 */}
-              <div className="absolute bottom-4 right-12 bg-white border border-gray-200 shadow-sm rounded-full px-3 py-1.5 flex items-center gap-3 text-[11px] text-gray-500 font-medium z-10 pointer-events-none">
-                <span>{wordCount} words</span>
-                <div className="w-1 h-1 rounded-full bg-gray-300"></div>
-                <span>{Math.ceil(wordCount / 200)} min read</span>
-                {/* 底部字数统计状态栏 */}
-              <div className="fixed bottom-6 right-8 md:right-96 bg-white border border-gray-200 shadow-md rounded-full px-4 py-2 flex items-center gap-3 text-[11px] text-gray-500 font-medium z-10 pointer-events-none transition-all duration-300" style={{ right: isSidebarOpen ? 'calc(20rem + 2rem)' : '2rem' }}>
-                <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {wordCount} words</span>
-                <div className="w-1 h-1 rounded-full bg-gray-300"></div>
-                <span className="flex items-center gap-1"><Settings2 className="w-3.5 h-3.5" /> {Math.ceil(wordCount / 200)} min read</span>
-              </div>
-            </div>
-            </div>
+                </div>
               )}
             </div>
 
@@ -376,6 +364,13 @@ export default function Editor() {
                   </ol>
                 </div>
               )}
+
+              {/* 底部字数统计状态栏 */}
+              <div className="fixed bottom-6 right-8 md:right-96 bg-white border border-gray-200 shadow-md rounded-full px-4 py-2 flex items-center gap-3 text-[11px] text-gray-500 font-medium z-10 pointer-events-none transition-all duration-300" style={{ right: isSidebarOpen ? 'calc(20rem + 2rem)' : '2rem' }}>
+                <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {wordCount} words</span>
+                <div className="w-1 h-1 rounded-full bg-gray-300"></div>
+                <span className="flex items-center gap-1"><Settings2 className="w-3.5 h-3.5" /> {Math.ceil(wordCount / 200)} min read</span>
+              </div>
             </div>
           </div>
         </main>
