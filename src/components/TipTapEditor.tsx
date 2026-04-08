@@ -412,7 +412,13 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
         // Update stats
         const wordCount = editor.storage.characterCount.words();
         const charCount = editor.storage.characterCount.characters();
-        useEditorStore.getState().setStats(wordCount, charCount);
+        // Prevent unnecessary re-renders for stats if they haven't changed
+        const currentStats = useEditorStore.getState();
+        if (currentStats.wordCount !== wordCount || currentStats.charCount !== charCount) {
+          setTimeout(() => {
+            useEditorStore.getState().setStats(wordCount, charCount);
+          }, 0);
+        }
       });
     },
     editorProps: {
@@ -474,6 +480,8 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       const text = state.doc.textBetween(Math.max(0, state.selection.to - 10), state.selection.to, ' ');
       if (text.trim().length > 5) {
         typingTimer = setTimeout(() => {
+          // Ensure we are still focused before showing ghost text
+          if (!editor.isFocused) return;
           // Only trigger if at the end of a paragraph/heading
           const $pos = state.selection.$to;
           if ($pos.parentOffset === $pos.parent.content.size) {
