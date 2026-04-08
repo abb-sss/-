@@ -6,7 +6,18 @@ import { useState, useEffect } from "react";
 
 export default function Editor() {
   const { id } = useParams();
-  const { title, content, formatStyle, wordCount, setTitle, setContent } = useEditorStore();
+  const { 
+    setActiveProject, 
+    title, content, formatStyle, wordCount, 
+    setTitle, setContent 
+  } = useEditorStore();
+  
+  useEffect(() => {
+    if (id && id !== "new") {
+      setActiveProject(id);
+    }
+  }, [id, setActiveProject]);
+
   const [activeTab, setActiveTab] = useState<"search" | "ai" | "matrix">("search");
   const [isGeneratingMatrix, setIsGeneratingMatrix] = useState(false);
   const [matrixGenerated, setMatrixGenerated] = useState(false);

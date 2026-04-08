@@ -16,6 +16,7 @@ import SlashCommandList from './editor/SlashCommandList';
 import { getSuggestionItems, renderItems } from './editor/slashExtension';
 import { getCitationItems, renderCitationItems } from './editor/citationExtension';
 import { Mark, mergeAttributes } from '@tiptap/core';
+import { useEditorStore } from '@/store/useEditorStore';
 
 // Custom extension for AI Diff highlighting
 const AiDiffMark = Mark.create({
@@ -351,14 +352,11 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
             suggestion: {
               char: '@',
               command: ({ editor, range, props }: any) => {
-                // @ts-ignore
-                import('@/store/useEditorStore').then(({ useEditorStore }) => {
-                  useEditorStore.getState().addCitation(props);
-                  const currentCitations = useEditorStore.getState().citations;
-                  const citeIndex = currentCitations.findIndex(c => c.refId === props.refId) + 1;
-                  const tooltipHTML = `<div class="citation-tooltip"><div class="font-semibold mb-1">${props.title}</div><div class="text-gray-400 text-xs mb-2">${props.authors} (${props.year})</div><div class="text-gray-300 text-xs line-clamp-3">查看原文内容与详情...</div></div>`;
-                  editor.chain().focus().deleteRange(range).insertContent(` <span class="citation-mark" data-ref-id="${props.refId}">[${citeIndex}]${tooltipHTML}</span> `).run();
-                });
+                useEditorStore.getState().addCitation(props);
+                const currentCitations = useEditorStore.getState().citations;
+                const citeIndex = currentCitations.findIndex(c => c.refId === props.refId) + 1;
+                const tooltipHTML = `<div class="citation-tooltip"><div class="font-semibold mb-1">${props.title}</div><div class="text-gray-400 text-xs mb-2">${props.authors} (${props.year})</div><div class="text-gray-300 text-xs line-clamp-3">查看原文内容与详情...</div></div>`;
+                editor.chain().focus().deleteRange(range).insertContent(` <span class="citation-mark" data-ref-id="${props.refId}">[${citeIndex}]${tooltipHTML}</span> `).run();
               },
             },
           };
@@ -380,8 +378,6 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
     ],
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-      
       // Clear previous timeout to debounce the heavy state updates
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
@@ -389,6 +385,8 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       
       // Debounce the state sync to 300ms after user stops typing
       updateTimeoutRef.current = setTimeout(() => {
+        onChange(editor.getHTML());
+        
         // Extract headings for TOC (read-only)
         const headings: { id: string, text: string, level: number }[] = [];
         
@@ -402,24 +400,22 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           }
         });
         
-        import('@/store/useEditorStore').then(({ useEditorStore }) => {
-          const currentHeadings = useEditorStore.getState().headings;
-          const isDifferent = currentHeadings.length !== headings.length || 
-            headings.some((h, i) => h.id !== currentHeadings[i]?.id || h.text !== currentHeadings[i]?.text);
-            
-          if (isDifferent) {
-            useEditorStore.getState().setHeadings(headings);
-          }
+        const currentHeadings = useEditorStore.getState().headings;
+        const isDifferent = currentHeadings.length !== headings.length || 
+          headings.some((h, i) => h.id !== currentHeadings[i]?.id || h.text !== currentHeadings[i]?.text);
           
-          if (!editor.isDestroyed) {
-            const wordCount = editor.storage.characterCount.words();
-            const charCount = editor.storage.characterCount.characters();
-            const currentStats = useEditorStore.getState();
-            if (currentStats.wordCount !== wordCount || currentStats.charCount !== charCount) {
-              useEditorStore.getState().setStats(wordCount, charCount);
-            }
+        if (isDifferent) {
+          useEditorStore.getState().setHeadings(headings);
+        }
+        
+        if (!editor.isDestroyed) {
+          const wordCount = editor.storage.characterCount.words();
+          const charCount = editor.storage.characterCount.characters();
+          const currentStats = useEditorStore.getState();
+          if (currentStats.wordCount !== wordCount || currentStats.charCount !== charCount) {
+            useEditorStore.getState().setStats(wordCount, charCount);
           }
-        });
+        }
       }, 300); // 300ms debounce
     },
     editorProps: {
@@ -431,14 +427,20 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
 
   useEffect(() => {
     if (editor && editor.getHTML() !== content && !editor.isFocused) {
-      // Defer external content setting to avoid React render conflicts
-      requestAnimationFrame(() => {
-        if (!editor.isDestroyed) {
-          editor.commands.setContent(content, false);
-        }
-      });
+      // Safely update external content
+      if (!editor.isDestroyed) {
+        editor.commands.setContent(content, false);
+      }
     }
   }, [content, editor]);
+
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -492,12 +494,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           const $pos = state.selection.$to;
           if ($pos.parentOffset === $pos.parent.content.size) {
             const suggestedText = "Furthermore, recent studies suggest a paradigm shift in this domain.";
-            // We use requestAnimationFrame instead of setTimeout to ensure clean synchronization
-            requestAnimationFrame(() => {
-               if (editor && !editor.isDestroyed) {
-                 editor.commands.setGhostText(suggestedText);
-               }
-            });
+            editor.commands.setGhostText(suggestedText);
           }
         }, 1500); // Trigger after 1.5s of no typing
       }
