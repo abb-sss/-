@@ -5,7 +5,7 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Code from '@tiptap/extension-code';
 import CharacterCount from '@tiptap/extension-character-count';
 import { common, createLowlight } from 'lowlight';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Quote, Code as CodeIcon, TerminalSquare, Calculator, Wand2, Check, X } from 'lucide-react';
 import { Extension } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
@@ -306,6 +306,8 @@ const MenuBar = ({ editor }: { editor: any }) => {
 };
 
 export default function TipTapEditor({ content, onChange, title, onTitleChange, formatStyle }: TipTapEditorProps) {
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -380,26 +382,26 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
       
-      // Extract headings for TOC (read-only)
-      const headings: { id: string, text: string, level: number }[] = [];
+      // Clear previous timeout to debounce the heavy state updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
       
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'heading') {
-          headings.push({
-            id: `heading-${pos}`,
-            text: node.textContent,
-            level: node.attrs.level,
-          });
-        }
-      });
-      
-      // We will NO LONGER update the store directly inside onUpdate.
-      // Instead, we will emit a custom event that the parent component can listen to 
-      // outside of the React render cycle, or simply rely on standard React useEffect.
-      // 
-      // Update stats and headings ONLY through requestAnimationFrame to ensure
-      // it completely escapes the current React call stack.
-      requestAnimationFrame(() => {
+      // Debounce the state sync to 300ms after user stops typing
+      updateTimeoutRef.current = setTimeout(() => {
+        // Extract headings for TOC (read-only)
+        const headings: { id: string, text: string, level: number }[] = [];
+        
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === 'heading') {
+            headings.push({
+              id: `heading-${pos}`,
+              text: node.textContent,
+              level: node.attrs.level,
+            });
+          }
+        });
+        
         import('@/store/useEditorStore').then(({ useEditorStore }) => {
           const currentHeadings = useEditorStore.getState().headings;
           const isDifferent = currentHeadings.length !== headings.length || 
@@ -418,7 +420,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
             }
           }
         });
-      });
+      }, 300); // 300ms debounce
     },
     editorProps: {
       attributes: {
