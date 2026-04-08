@@ -15,11 +15,14 @@ interface EditorState {
   formatStyle: string;
   citations: Citation[];
   headings: { id: string, text: string, level: number }[];
+  wordCount: number;
+  charCount: number;
   setTitle: (title: string) => void;
   setContent: (content: string) => void;
   setFormatStyle: (style: string) => void;
   addCitation: (citation: Citation) => void;
   setHeadings: (headings: { id: string, text: string, level: number }[]) => void;
+  setStats: (words: number, chars: number) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -35,6 +38,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   formatStyle: '默认',
   citations: [],
   headings: [],
+  wordCount: 0,
+  charCount: 0,
   setTitle: (title) => set({ title }),
   setContent: (content) => set({ content }),
   setFormatStyle: (formatStyle) => set({ formatStyle }),
@@ -45,4 +50,5 @@ export const useEditorStore = create<EditorState>((set) => ({
     return { citations: [...state.citations, citation] };
   }),
   setHeadings: (headings) => set({ headings }),
+  setStats: (wordCount, charCount) => set({ wordCount, charCount }),
 }));

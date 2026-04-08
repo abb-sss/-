@@ -84,6 +84,25 @@
   border-bottom: 2px solid #22c55e; /* green-500 */
 }
 
+/* Ghost Text Autocomplete */
+.ghost-text {
+  color: #9ca3af; /* gray-400 */
+  pointer-events: none;
+  user-select: none;
+}
+
+.ghost-text::after {
+  content: ' ⇥ Tab to accept';
+  font-size: 10px;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-left: 4px;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  border: 1px solid #e5e7eb;
+}
+
 .citation-mark {
   color: #2563eb;
   cursor: pointer;

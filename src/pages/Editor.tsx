@@ -1,4 +1,4 @@
-import { ArrowLeft, Search, Bookmark, Download, Settings2, ChevronDown, Wand2, PanelRightClose, PanelRightOpen, ShieldCheck, TableProperties } from "lucide-react";
+import { ArrowLeft, Search, Bookmark, Download, Settings2, ChevronDown, Wand2, PanelRightClose, PanelRightOpen, ShieldCheck, TableProperties, FileText } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import TipTapEditor from "@/components/TipTapEditor";
 import { useEditorStore } from "@/store/useEditorStore";
@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 
 export default function Editor() {
   const { id } = useParams();
-  const { title, content, formatStyle, setTitle, setContent } = useEditorStore();
+  const { title, content, formatStyle, wordCount, setTitle, setContent } = useEditorStore();
   const [activeTab, setActiveTab] = useState<"search" | "ai" | "matrix">("search");
   const [isGeneratingMatrix, setIsGeneratingMatrix] = useState(false);
   const [matrixGenerated, setMatrixGenerated] = useState(false);
@@ -25,6 +25,7 @@ export default function Editor() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isCheckingPlagiarism, setIsCheckingPlagiarism] = useState(false);
   const [plagiarismReport, setPlagiarismReport] = useState<{ similarity: number, aiGenerated: number } | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const handlePlagiarismCheck = () => {
     setIsCheckingPlagiarism(true);
@@ -122,11 +123,12 @@ export default function Editor() {
 
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = () => {
+  const handleExport = (type: 'pdf' | 'docx' | 'tex') => {
+    setShowExportMenu(false);
     setIsExporting(true);
     setTimeout(() => {
       setIsExporting(false);
-      alert(`已成功生成并下载 [${formatStyle}] 格式的 PDF 文档`);
+      alert(`已成功生成并下载 [${formatStyle}] 格式的 ${type.toUpperCase()} 文档`);
     }, 2000);
   };
 
@@ -243,7 +245,19 @@ export default function Editor() {
                   <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-400"></div> 重复率 {plagiarismReport.similarity}%</span>
                   <div className="w-px h-3 bg-gray-300"></div>
                   <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-400"></div> AI率 {plagiarismReport.aiGenerated}%</span>
-                </div>
+                  {/* 底部字数统计状态栏 */}
+              <div className="absolute bottom-4 right-12 bg-white border border-gray-200 shadow-sm rounded-full px-3 py-1.5 flex items-center gap-3 text-[11px] text-gray-500 font-medium z-10 pointer-events-none">
+                <span>{wordCount} words</span>
+                <div className="w-1 h-1 rounded-full bg-gray-300"></div>
+                <span>{Math.ceil(wordCount / 200)} min read</span>
+                {/* 底部字数统计状态栏 */}
+              <div className="fixed bottom-6 right-8 md:right-96 bg-white border border-gray-200 shadow-md rounded-full px-4 py-2 flex items-center gap-3 text-[11px] text-gray-500 font-medium z-10 pointer-events-none transition-all duration-300" style={{ right: isSidebarOpen ? 'calc(20rem + 2rem)' : '2rem' }}>
+                <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {wordCount} words</span>
+                <div className="w-1 h-1 rounded-full bg-gray-300"></div>
+                <span className="flex items-center gap-1"><Settings2 className="w-3.5 h-3.5" /> {Math.ceil(wordCount / 200)} min read</span>
+              </div>
+            </div>
+            </div>
               )}
             </div>
 
@@ -270,14 +284,36 @@ export default function Editor() {
               <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
             
-            <button 
-              onClick={handleExport}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-800 transition shadow-sm disabled:opacity-70"
-            >
-              {isExporting ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Download className="w-3.5 h-3.5" />}
-              {isExporting ? '导出中...' : '导出 PDF'}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md hover:bg-gray-800 transition shadow-sm disabled:opacity-70"
+              >
+                {isExporting ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Download className="w-3.5 h-3.5" />}
+                {isExporting ? '导出中...' : '导出'}
+                <ChevronDown className="w-3 h-3 ml-1" />
+              </button>
+              
+              {showExportMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50">
+                  <div className="py-1">
+                    <button onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                      <span>导出为 PDF</span>
+                      <span className="text-xs text-gray-400">推荐</span>
+                    </button>
+                    <button onClick={() => handleExport('docx')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                      导出为 Word (.docx)
+                    </button>
+                    <div className="h-px bg-gray-100 my-1"></div>
+                    <button onClick={() => handleExport('tex')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                      <span>导出 LaTeX 源码</span>
+                      <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded">.tex</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

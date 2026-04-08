@@ -1,11 +1,12 @@
-import { useEditor, EditorContent, ReactRenderer, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Code from '@tiptap/extension-code';
+import CharacterCount from '@tiptap/extension-character-count';
 import { common, createLowlight } from 'lowlight';
-import { useEffect } from 'react';
-import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Quote, Code as CodeIcon, TerminalSquare, Calculator } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Quote, Code as CodeIcon, TerminalSquare, Calculator, Wand2, Check, X } from 'lucide-react';
 import { Extension } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
 import tippy from 'tippy.js';
@@ -45,6 +46,103 @@ const AiDiffMark = Mark.create({
 
   renderHTML({ HTMLAttributes }) {
     return ['span', mergeAttributes(HTMLAttributes), 0]
+  },
+});
+
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    ghostText: {
+      setGhostText: (text: string) => ReturnType;
+      clearGhostText: () => ReturnType;
+      acceptGhostText: () => ReturnType;
+    }
+  }
+}
+
+// Custom extension for Ghost Text Autocomplete
+const GhostTextExtension = Extension.create({
+  name: 'ghostText',
+
+  addStorage() {
+    return {
+      ghostText: '',
+      active: false,
+    };
+  },
+
+  addCommands() {
+    return {
+      setGhostText: (text: string) => ({ editor }) => {
+        editor.storage.ghostText.ghostText = text;
+        editor.storage.ghostText.active = true;
+        editor.view.dispatch(editor.state.tr.setMeta('ghostText', true));
+        return true;
+      },
+      clearGhostText: () => ({ editor }) => {
+        editor.storage.ghostText.ghostText = '';
+        editor.storage.ghostText.active = false;
+        editor.view.dispatch(editor.state.tr.setMeta('ghostText', true));
+        return true;
+      },
+      acceptGhostText: () => ({ editor }) => {
+        if (!editor.storage.ghostText.active || !editor.storage.ghostText.ghostText) return false;
+        const text = editor.storage.ghostText.ghostText;
+        editor.commands.clearGhostText();
+        editor.chain().focus().insertContent(text).run();
+        return true;
+      },
+    };
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => this.editor.commands.acceptGhostText(),
+      Escape: () => this.editor.commands.clearGhostText(),
+      // Any other key should clear it
+      ArrowUp: () => { this.editor.commands.clearGhostText(); return false; },
+      ArrowDown: () => { this.editor.commands.clearGhostText(); return false; },
+      ArrowLeft: () => { this.editor.commands.clearGhostText(); return false; },
+      ArrowRight: () => { this.editor.commands.clearGhostText(); return false; },
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('ghostTextPlugin'),
+        state: {
+          init: () => DecorationSet.empty,
+          apply: (tr, oldState) => {
+            if (tr.docChanged) {
+              // Any document change clears the ghost text
+              this.editor.storage.ghostText.ghostText = '';
+              this.editor.storage.ghostText.active = false;
+              return DecorationSet.empty;
+            }
+            if (tr.getMeta('ghostText')) {
+              if (this.editor.storage.ghostText.active && this.editor.storage.ghostText.ghostText) {
+                const { to } = tr.selection;
+                const widget = document.createElement('span');
+                widget.className = 'ghost-text';
+                widget.textContent = this.editor.storage.ghostText.ghostText;
+                const decoration = Decoration.widget(to, widget, { side: 1 });
+                return DecorationSet.create(tr.doc, [decoration]);
+              }
+              return DecorationSet.empty;
+            }
+            return oldState;
+          },
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state);
+          },
+        },
+      }),
+    ];
   },
 });
 
@@ -236,6 +334,8 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       }),
       AiDiffMark,
       MathExtension,
+      CharacterCount,
+      GhostTextExtension,
       SlashCommand.configure({
         suggestion: {
           items: getSuggestionItems,
@@ -308,6 +408,11 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
             useEditorStore.getState().setHeadings(headings);
           }, 0);
         }
+        
+        // Update stats
+        const wordCount = editor.storage.characterCount.words();
+        const charCount = editor.storage.characterCount.characters();
+        useEditorStore.getState().setStats(wordCount, charCount);
       });
     },
     editorProps: {
@@ -323,6 +428,28 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
     }
   }, [content, editor]);
 
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showAiInput, setShowAiInput] = useState(false);
+
+  const handleAiSubmit = () => {
+    if (!aiPrompt.trim()) return;
+    setIsAiLoading(true);
+    setTimeout(() => {
+      setIsAiLoading(false);
+      setShowAiInput(false);
+      setAiPrompt("");
+      if (editor) {
+        const { from, to } = editor.state.selection;
+        const selectedText = editor.state.doc.textBetween(from, to, ' ');
+        editor.chain().focus().deleteSelection().insertContent(`
+          <span data-diff-type="deletion">${selectedText}</span>
+          <span data-diff-type="insertion">${selectedText} (AI: ${aiPrompt} 处理完成)</span>
+        `).run();
+      }
+    }, 1500);
+  };
+
   // Handle format style changes
   useEffect(() => {
     if (editor) {
@@ -336,40 +463,109 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
     }
   }, [formatStyle, editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+    
+    // Handle AI ghost text simulation when user pauses
+    let typingTimer: any;
+    const handleUpdate = () => {
+      clearTimeout(typingTimer);
+      const { state } = editor;
+      const text = state.doc.textBetween(Math.max(0, state.selection.to - 10), state.selection.to, ' ');
+      if (text.trim().length > 5) {
+        typingTimer = setTimeout(() => {
+          // Only trigger if at the end of a paragraph/heading
+          const $pos = state.selection.$to;
+          if ($pos.parentOffset === $pos.parent.content.size) {
+            const suggestedText = "Furthermore, recent studies suggest a paradigm shift in this domain.";
+            editor.commands.setGhostText(suggestedText);
+          }
+        }, 1500); // Trigger after 1.5s of no typing
+      }
+    };
+
+    editor.on('update', handleUpdate);
+    return () => {
+      editor.off('update', handleUpdate);
+      clearTimeout(typingTimer);
+    };
+  }, [editor]);
+
   return (
     <div className={`bg-white min-h-[800px] shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16 relative group ${formatStyle === 'IEEE' ? 'max-w-[900px] mx-auto' : 'max-w-4xl mx-auto'}`}>
       <MenuBar editor={editor} />
       {editor && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex bg-gray-900 rounded-lg shadow-lg overflow-hidden p-1 text-white border border-gray-700">
-          <button
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('bold') ? 'text-blue-400' : 'text-gray-300'}`}
-            title="加粗"
-          >
-            <Bold className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('italic') ? 'text-blue-400' : 'text-gray-300'}`}
-            title="斜体"
-          >
-            <Italic className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('strike') ? 'text-blue-400' : 'text-gray-300'}`}
-            title="删除线"
-          >
-            <Strikethrough className="w-4 h-4" />
-          </button>
-          <div className="w-px h-5 bg-gray-700 mx-1 self-center"></div>
-          <button
-            onClick={() => editor.chain().focus().toggleCode().run()}
-            className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('code') ? 'text-blue-400' : 'text-gray-300'}`}
-            title="行内代码"
-          >
-            <CodeIcon className="w-4 h-4" />
-          </button>
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className={`flex ${showAiInput ? 'bg-white shadow-xl border-blue-200 w-80 flex-col' : 'bg-gray-900 border-gray-700'} rounded-lg shadow-lg overflow-hidden p-1 text-white border`}>
+          {!showAiInput ? (
+            <div className="flex items-center">
+              <button
+                onClick={() => setShowAiInput(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-blue-600 hover:bg-blue-500 transition text-white font-medium text-xs mr-1"
+                title="AI 助手"
+              >
+                <Wand2 className="w-3.5 h-3.5" /> Ask AI
+              </button>
+              <div className="w-px h-5 bg-gray-700 mx-1 self-center"></div>
+              <button
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('bold') ? 'text-blue-400' : 'text-gray-300'}`}
+                title="加粗"
+              >
+                <Bold className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('italic') ? 'text-blue-400' : 'text-gray-300'}`}
+                title="斜体"
+              >
+                <Italic className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().toggleStrike().run()}
+                className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('strike') ? 'text-blue-400' : 'text-gray-300'}`}
+                title="删除线"
+              >
+                <Strikethrough className="w-4 h-4" />
+              </button>
+              <div className="w-px h-5 bg-gray-700 mx-1 self-center"></div>
+              <button
+                onClick={() => editor.chain().focus().toggleCode().run()}
+                className={`p-1.5 rounded hover:bg-gray-800 transition ${editor.isActive('code') ? 'text-blue-400' : 'text-gray-300'}`}
+                title="行内代码"
+              >
+                <CodeIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="p-2 flex items-center gap-2">
+              <Wand2 className="w-4 h-4 text-blue-600 shrink-0" />
+              <input
+                autoFocus
+                type="text"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAiSubmit();
+                  if (e.key === 'Escape') setShowAiInput(false);
+                }}
+                disabled={isAiLoading}
+                placeholder="要求 AI 润色、翻译或改写..."
+                className="flex-1 bg-transparent text-gray-800 text-sm focus:outline-none placeholder-gray-400"
+              />
+              {isAiLoading ? (
+                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0"></div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <button onClick={handleAiSubmit} className="p-1 rounded text-gray-400 hover:text-green-600 hover:bg-green-50 transition">
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => { setShowAiInput(false); setAiPrompt(""); }} className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </BubbleMenu>
       )}
       <input
