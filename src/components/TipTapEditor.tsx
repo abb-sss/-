@@ -385,8 +385,6 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       
       editor.state.doc.descendants((node, pos) => {
         if (node.type.name === 'heading') {
-          // Instead of mutating the node with an ID, we just read the text and level.
-          // The ID will be generated dynamically based on position for the React UI.
           headings.push({
             id: `heading-${pos}`,
             text: node.textContent,
@@ -395,30 +393,31 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
         }
       });
       
-      // Update TOC in store without any ProseMirror transaction dispatch
-      import('@/store/useEditorStore').then(({ useEditorStore }) => {
-        // Compare with current headings to avoid unnecessary state updates
-        const currentHeadings = useEditorStore.getState().headings;
-        const isDifferent = currentHeadings.length !== headings.length || 
-          headings.some((h, i) => h.id !== currentHeadings[i]?.id || h.text !== currentHeadings[i]?.text);
-          
-        if (isDifferent) {
-          // Use setTimeout to ensure state update happens entirely outside React's render phase
-          setTimeout(() => {
+      // We will NO LONGER update the store directly inside onUpdate.
+      // Instead, we will emit a custom event that the parent component can listen to 
+      // outside of the React render cycle, or simply rely on standard React useEffect.
+      // 
+      // Update stats and headings ONLY through requestAnimationFrame to ensure
+      // it completely escapes the current React call stack.
+      requestAnimationFrame(() => {
+        import('@/store/useEditorStore').then(({ useEditorStore }) => {
+          const currentHeadings = useEditorStore.getState().headings;
+          const isDifferent = currentHeadings.length !== headings.length || 
+            headings.some((h, i) => h.id !== currentHeadings[i]?.id || h.text !== currentHeadings[i]?.text);
+            
+          if (isDifferent) {
             useEditorStore.getState().setHeadings(headings);
-          }, 0);
-        }
-        
-        // Update stats
-        const wordCount = editor.storage.characterCount.words();
-        const charCount = editor.storage.characterCount.characters();
-        // Prevent unnecessary re-renders for stats if they haven't changed
-        const currentStats = useEditorStore.getState();
-        if (currentStats.wordCount !== wordCount || currentStats.charCount !== charCount) {
-          setTimeout(() => {
-            useEditorStore.getState().setStats(wordCount, charCount);
-          }, 0);
-        }
+          }
+          
+          if (!editor.isDestroyed) {
+            const wordCount = editor.storage.characterCount.words();
+            const charCount = editor.storage.characterCount.characters();
+            const currentStats = useEditorStore.getState();
+            if (currentStats.wordCount !== wordCount || currentStats.charCount !== charCount) {
+              useEditorStore.getState().setStats(wordCount, charCount);
+            }
+          }
+        });
       });
     },
     editorProps: {
@@ -430,7 +429,12 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
 
   useEffect(() => {
     if (editor && editor.getHTML() !== content && !editor.isFocused) {
-      editor.commands.setContent(content, false);
+      // Defer external content setting to avoid React render conflicts
+      requestAnimationFrame(() => {
+        if (!editor.isDestroyed) {
+          editor.commands.setContent(content, false);
+        }
+      });
     }
   }, [content, editor]);
 
