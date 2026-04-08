@@ -487,17 +487,17 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       if (text.trim().length > 5) {
         typingTimer = setTimeout(() => {
           // Ensure we are still focused before showing ghost text
-          if (!editor.isFocused) return;
+          if (!editor.isFocused || editor.isDestroyed) return;
           // Only trigger if at the end of a paragraph/heading
           const $pos = state.selection.$to;
           if ($pos.parentOffset === $pos.parent.content.size) {
             const suggestedText = "Furthermore, recent studies suggest a paradigm shift in this domain.";
-            // We use setTimeout to ensure this internal state mutation escapes the current call stack
-            setTimeout(() => {
+            // We use requestAnimationFrame instead of setTimeout to ensure clean synchronization
+            requestAnimationFrame(() => {
                if (editor && !editor.isDestroyed) {
                  editor.commands.setGhostText(suggestedText);
                }
-            }, 0);
+            });
           }
         }, 1500); // Trigger after 1.5s of no typing
       }
