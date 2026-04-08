@@ -486,7 +486,12 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           const $pos = state.selection.$to;
           if ($pos.parentOffset === $pos.parent.content.size) {
             const suggestedText = "Furthermore, recent studies suggest a paradigm shift in this domain.";
-            editor.commands.setGhostText(suggestedText);
+            // Wrapping setGhostText inside setTimeout to prevent synchronous rendering conflict
+            setTimeout(() => {
+               if (!editor.isDestroyed) {
+                 editor.commands.setGhostText(suggestedText);
+               }
+            }, 0);
           }
         }, 1500); // Trigger after 1.5s of no typing
       }
