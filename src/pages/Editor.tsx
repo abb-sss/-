@@ -136,6 +136,28 @@ export default function Editor() {
     }, 1500);
   };
 
+  const [aiChatInput, setAiChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'ai', content: '您好！我是您的学术写作助手。您可以在左侧选中段落让我润色，或者直接在这里向我提问关于文献的内容。' }
+  ]);
+
+  const handleAiChat = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && aiChatInput.trim() && !isPolishing) {
+      const userMessage = aiChatInput.trim();
+      setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+      setAiChatInput("");
+      setIsPolishing(true);
+
+      setTimeout(() => {
+        setIsPolishing(false);
+        setChatMessages(prev => [...prev, { 
+          role: 'ai', 
+          content: `关于您提到的 "${userMessage}"，基于当前文献库的分析：\n\n最新的研究表明该领域正在向多模态方向发展。例如，[Attention Is All You Need] 提出了一种完全基于注意力机制的架构，摒弃了传统的循环和卷积网络。\n\n您希望我基于这个观点为您扩写当前段落吗？`
+        }]);
+      }, 1500);
+    }
+  };
+
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishResult, setPolishResult] = useState("");
 
@@ -229,7 +251,7 @@ export default function Editor() {
             )}
 
             {/* 编辑器内容区 */}
-            <div className="flex-1 min-w-0 max-w-3xl">
+            <div className={`flex-1 min-w-0 ${formatStyle === 'IEEE' ? 'max-w-[900px]' : 'max-w-4xl'}`}>
               <TipTapEditor
                 content={content}
                 onChange={setContent}
@@ -240,7 +262,7 @@ export default function Editor() {
               
               {/* 动态参考文献列表 */}
               {useEditorStore.getState().citations.length > 0 && (
-                <div className="mt-8 bg-white shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16">
+                <div className={`mt-8 bg-white shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16 ${formatStyle === 'IEEE' ? 'max-w-[900px] mx-auto' : 'max-w-4xl mx-auto'}`}>
                   <h2 className="text-2xl font-bold font-serif mb-6 border-b border-gray-200 pb-2">参考文献 (References)</h2>
                   <ol className={`list-decimal pl-5 space-y-3 ${formatStyle === 'APA' ? 'format-apa' : formatStyle === 'IEEE' ? 'format-ieee' : formatStyle === 'MLA' ? 'format-mla' : 'format-default text-sm text-gray-700'}`}>
                     {useEditorStore.getState().citations.map((cite, index) => (
@@ -348,46 +370,42 @@ export default function Editor() {
           )}
 
           {activeTab === 'ai' && (
-            <div className="flex flex-col h-full">
-              <div className="flex flex-col gap-3 mb-6">
-                <button 
-                  onClick={() => handlePolish('academic')}
-                  disabled={isPolishing}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
-                >
-                  {isPolishing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Wand2 className="w-4 h-4" />}
-                  {isPolishing ? '正在分析...' : '学术化语气润色'}
-                </button>
-                <button 
-                  onClick={() => handlePolish('grammar')}
-                  disabled={isPolishing}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition shadow-sm disabled:opacity-50"
-                >
-                  {isPolishing ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> : <Settings2 className="w-4 h-4" />}
-                  {isPolishing ? '正在检查...' : '语法与拼写检查'}
-                </button>
+            <div className="flex flex-col h-full bg-white relative">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      msg.role === 'user' 
+                        ? 'bg-blue-600 text-white rounded-tr-sm' 
+                        : 'bg-gray-100 text-gray-800 rounded-tl-sm'
+                    }`}>
+                      {msg.role === 'ai' && <Wand2 className="w-3.5 h-3.5 inline-block mr-1.5 mb-0.5 text-blue-600" />}
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {isPolishing && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 text-gray-800 rounded-2xl rounded-tl-sm px-4 py-3">
+                      <div className="flex gap-1.5">
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {polishResult ? (
-                <div className="flex-1 bg-white border border-blue-100 rounded-lg p-4 shadow-sm relative group overflow-y-auto">
-                  <div className="text-xs font-semibold text-blue-600 mb-3 flex items-center gap-1.5">
-                    <Wand2 className="w-3.5 h-3.5" /> AI 分析结果
-                  </div>
-                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
-                    {polishResult}
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end">
-                    <button className="text-xs font-medium bg-gray-900 text-white px-3 py-1.5 rounded hover:bg-gray-800 transition">
-                      替换选中文本
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6 text-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                  <Wand2 className="w-8 h-8 mb-4 text-gray-300" />
-                  <p className="text-sm">在左侧编辑器中选中需要优化的段落，点击上方按钮进行智能分析。</p>
-                </div>
-              )}
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100">
+                <input
+                  type="text"
+                  value={aiChatInput}
+                  onChange={(e) => setAiChatInput(e.target.value)}
+                  onKeyDown={handleAiChat}
+                  placeholder="向 AI 助手提问..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                />
+              </div>
             </div>
           )}
         </div>

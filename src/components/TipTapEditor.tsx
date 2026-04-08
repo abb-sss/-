@@ -5,10 +5,12 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Code from '@tiptap/extension-code';
 import { common, createLowlight } from 'lowlight';
 import { useEffect } from 'react';
-import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Quote, Code as CodeIcon, TerminalSquare } from 'lucide-react';
+import { Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Quote, Code as CodeIcon, TerminalSquare, Calculator } from 'lucide-react';
 import { Extension } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
 import tippy from 'tippy.js';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import SlashCommandList from './editor/SlashCommandList';
 import { getSuggestionItems, renderItems } from './editor/slashExtension';
 import { getCitationItems, renderCitationItems } from './editor/citationExtension';
@@ -47,6 +49,26 @@ interface TipTapEditorProps {
   onTitleChange: (title: string) => void;
   formatStyle: string;
 }
+
+const MathExtension = Extension.create({
+  name: 'mathExtension',
+  addKeyboardShortcuts() {
+    return {
+      'Mod-m': () => {
+        const text = prompt('请输入 LaTeX 公式:', 'E = mc^2');
+        if (text) {
+          try {
+            const html = katex.renderToString(text, { throwOnError: false });
+            this.editor.chain().focus().insertContent(`<span class="math-tex" data-tex="${text}">${html}</span>`).run();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        return true;
+      },
+    };
+  },
+});
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
@@ -131,6 +153,23 @@ const MenuBar = ({ editor }: { editor: any }) => {
       >
         <TerminalSquare className="w-4 h-4" />
       </button>
+      <button
+        onClick={() => {
+          const text = prompt('请输入 LaTeX 公式:', 'E = mc^2');
+          if (text) {
+            try {
+              const html = katex.renderToString(text, { throwOnError: false });
+              editor.chain().focus().insertContent(`<span class="math-tex inline-block mx-1" data-tex="${text}">${html}</span>`).run();
+            } catch (e) {
+              console.error(e);
+            }
+          }
+        }}
+        className="p-2 rounded hover:bg-gray-200 transition text-gray-600"
+        title="插入数学公式 (Cmd/Ctrl + M)"
+      >
+        <Calculator className="w-4 h-4" />
+      </button>
     </div>
   );
 };
@@ -162,6 +201,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       Placeholder.configure({
         placeholder: '输入 "/" 唤起块菜单，或使用右侧助手...',
       }),
+      MathExtension,
       SlashCommand.configure({
         suggestion: {
           items: getSuggestionItems,
@@ -254,7 +294,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       editor.setOptions({
         editorProps: {
           attributes: {
-            class: `prose max-w-none focus:outline-none min-h-[400px] text-gray-900 ${formatStyle === 'APA' ? 'format-apa' : formatStyle === 'IEEE' ? 'format-ieee' : formatStyle === 'MLA' ? 'format-mla' : 'format-default'}`,
+            class: `prose max-w-none focus:outline-none min-h-[400px] text-gray-900 ${formatStyle === 'APA' ? 'format-apa' : formatStyle === 'IEEE' ? 'format-ieee' : formatStyle === 'MLA' ? 'format-mla' : 'format-default mx-auto max-w-3xl'}`,
           },
         },
       });
@@ -262,7 +302,7 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
   }, [formatStyle, editor]);
 
   return (
-    <div className="max-w-3xl mx-auto bg-white min-h-[800px] shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16 relative group">
+    <div className={`bg-white min-h-[800px] shadow-[0_0_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-16 relative group ${formatStyle === 'IEEE' ? 'max-w-[900px] mx-auto' : 'max-w-4xl mx-auto'}`}>
       <MenuBar editor={editor} />
       {editor && (
         <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex bg-gray-900 rounded-lg shadow-lg overflow-hidden p-1 text-white border border-gray-700">

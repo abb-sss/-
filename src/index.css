@@ -19,6 +19,8 @@
 .format-apa {
   font-family: "Times New Roman", Times, serif;
   line-height: 2;
+  max-width: 800px;
+  margin: 0 auto;
 }
 .format-apa p { text-indent: 0.5in; margin-bottom: 0; }
 .format-apa h1 { text-align: center; font-weight: bold; margin-bottom: 1rem; }
@@ -27,14 +29,23 @@
 .format-ieee {
   font-family: "Times New Roman", Times, serif;
   line-height: 1.5;
+  column-count: 2;
+  column-gap: 0.25in;
+  max-width: 8.5in;
+  margin: 0 auto;
+  text-align: justify;
 }
-.format-ieee p { margin-bottom: 0.5rem; text-align: justify; }
-.format-ieee h1 { text-align: center; font-size: 24pt; margin-bottom: 1.5rem; }
-.format-ieee h2 { text-transform: uppercase; text-align: center; font-size: 10pt; }
+.format-ieee p { margin-bottom: 0.5rem; text-align: justify; text-indent: 0.14in; }
+.format-ieee h1 { text-align: center; font-size: 24pt; margin-bottom: 1.5rem; column-span: all; }
+.format-ieee h2 { text-transform: uppercase; text-align: center; font-size: 10pt; margin-top: 12pt; margin-bottom: 6pt; }
+.format-ieee h3 { font-style: italic; font-size: 10pt; margin-top: 6pt; margin-bottom: 3pt; }
+.format-ieee .ProseMirror > *:first-child { margin-top: 0; }
 
 .format-mla {
   font-family: "Times New Roman", Times, serif;
   line-height: 2;
+  max-width: 800px;
+  margin: 0 auto;
 }
 .format-mla p { text-indent: 0.5in; margin-bottom: 0; }
 .format-mla h1 { text-align: left; font-weight: normal; margin-bottom: 1rem; }
