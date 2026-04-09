@@ -76,16 +76,20 @@ const GhostTextExtension = Extension.create({
 
   addCommands() {
     return {
-      setGhostText: (text: string) => ({ editor }) => {
+      setGhostText: (text: string) => ({ editor, dispatch }) => {
         editor.storage.ghostText.ghostText = text;
         editor.storage.ghostText.active = true;
-        editor.view.dispatch(editor.state.tr.setMeta('ghostText', true));
+        if (dispatch) {
+          dispatch(editor.state.tr.setMeta('ghostText', true));
+        }
         return true;
       },
-      clearGhostText: () => ({ editor }) => {
+      clearGhostText: () => ({ editor, dispatch }) => {
         editor.storage.ghostText.ghostText = '';
         editor.storage.ghostText.active = false;
-        editor.view.dispatch(editor.state.tr.setMeta('ghostText', true));
+        if (dispatch) {
+          dispatch(editor.state.tr.setMeta('ghostText', true));
+        }
         return true;
       },
       acceptGhostText: () => ({ editor }) => {
@@ -494,7 +498,15 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
           const $pos = state.selection.$to;
           if ($pos.parentOffset === $pos.parent.content.size) {
             const suggestedText = "Furthermore, recent studies suggest a paradigm shift in this domain.";
-            editor.commands.setGhostText(suggestedText);
+            
+            // To completely prevent React state update collisions with TipTap's internal render cycle,
+            // we decouple this ghost text insertion from the current microtask/macrotask flow 
+            // by using setTimeout and forcing it to run outside the current execution context.
+            setTimeout(() => {
+              if (editor && !editor.isDestroyed && editor.isFocused) {
+                editor.commands.setGhostText(suggestedText);
+              }
+            }, 0);
           }
         }, 1500); // Trigger after 1.5s of no typing
       }
