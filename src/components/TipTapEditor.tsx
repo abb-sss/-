@@ -443,8 +443,11 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
+      if (editor && !editor.isDestroyed) {
+        editor.destroy();
+      }
     };
-  }, []);
+  }, [editor]);
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -488,6 +491,10 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
     let typingTimer: any;
     const handleUpdate = () => {
       clearTimeout(typingTimer);
+      
+      // If we are destroying, do nothing
+      if (editor.isDestroyed) return;
+      
       const { state } = editor;
       const text = state.doc.textBetween(Math.max(0, state.selection.to - 10), state.selection.to, ' ');
       if (text.trim().length > 5) {
@@ -512,9 +519,10 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       }
     };
 
-    editor.on('update', handleUpdate);
+    // Use transaction hook instead of update hook to catch state changes earlier and safer
+    editor.on('transaction', handleUpdate);
     return () => {
-      editor.off('update', handleUpdate);
+      editor.off('transaction', handleUpdate);
       clearTimeout(typingTimer);
     };
   }, [editor]);
