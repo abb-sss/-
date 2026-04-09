@@ -443,11 +443,11 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
-      if (editor && !editor.isDestroyed) {
-        editor.destroy();
-      }
+      // Note: We don't call editor.destroy() here directly because useEditor() 
+      // already handles the initialization and cleanup of the editor instance.
+      // Calling it manually here causes double-destruction and race conditions.
     };
-  }, [editor]);
+  }, []);
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -508,21 +508,25 @@ export default function TipTapEditor({ content, onChange, title, onTitleChange, 
             
             // To completely prevent React state update collisions with TipTap's internal render cycle,
             // we decouple this ghost text insertion from the current microtask/macrotask flow 
-            // by using setTimeout and forcing it to run outside the current execution context.
-            setTimeout(() => {
-              if (editor && !editor.isDestroyed && editor.isFocused) {
-                editor.commands.setGhostText(suggestedText);
-              }
-            }, 0);
+            // by using requestAnimationFrame then setTimeout to guarantee it runs after paint.
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                if (editor && !editor.isDestroyed && editor.isFocused) {
+                  editor.commands.setGhostText(suggestedText);
+                }
+              }, 0);
+            });
           }
         }, 1500); // Trigger after 1.5s of no typing
       }
     };
 
-    // Use transaction hook instead of update hook to catch state changes earlier and safer
     editor.on('transaction', handleUpdate);
     return () => {
-      editor.off('transaction', handleUpdate);
+      // Must use isDestroyed check here since editor might be already disposed by another hook
+      if (editor && !editor.isDestroyed) {
+        editor.off('transaction', handleUpdate);
+      }
       clearTimeout(typingTimer);
     };
   }, [editor]);
